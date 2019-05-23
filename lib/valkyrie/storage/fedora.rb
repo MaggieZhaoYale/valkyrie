@@ -3,7 +3,8 @@ module Valkyrie::Storage
   # Implements the DataMapper Pattern to store binary data in fedora
   class Fedora
     attr_reader :connection, :base_path, :fedora_version
-    PROTOCOL = 'fedora://'
+    PROTOCOL = 'fedora://'.freeze
+    SLASH = '/'.freeze
 
     # @param [Ldp::Client] connection
     def initialize(connection:, base_path: "/", fedora_version: 4)
@@ -31,14 +32,16 @@ module Valkyrie::Storage
     # @param file [IO]
     # @param original_filename [String]
     # @param resource [Valkyrie::Resource]
-    # @param _extra_arguments [Hash] additional arguments which may be passed to other adapters
+    # @param extra_arguments [Hash] additional arguments which may be passed to other adapters
+    # @option id_transformer [Lambda] transforms a simple id (e.g. 'DDS78RK') into a uri
     # @return [Valkyrie::StorageAdapter::StreamFile]
-    def upload(file:, original_filename:, resource:, **_extra_arguments)
-      identifier = id_to_uri(resource.id) + '/original'
+    def upload(file:, original_filename:, resource:, **extra_arguments)
+      identifier = id_to_uri(resource.id, extra_arguments[:id_transformer]) + '/original'
       sha1 = fedora_version == 5 ? "sha" : "sha1"
       connection.http.put do |request|
         request.url identifier
         request.headers['Content-Type'] = file.content_type
+        request.headers['Content-Length'] = file.content_length if file.respond_to? :content_length
         request.headers['Content-Disposition'] = "attachment; filename=\"#{original_filename}\""
         request.headers['digest'] = "#{sha1}=#{Digest::SHA1.file(file)}"
         request.headers['link'] = "<http://www.w3.org/ns/ldp#NonRDFSource>; rel=\"type\""
@@ -87,12 +90,15 @@ module Valkyrie::Storage
         RDF::URI(identifier)
       end
 
-      def id_to_uri(id)
-        RDF::URI("#{connection_prefix}/#{CGI.escape(id.to_s)}")
+      def id_to_uri(id, id_transformer)
+        id = CGI.escape(id.to_s)
+        RDF::URI.new(id_transformer.call(id))
       end
 
-      def connection_prefix
-        "#{connection.http.url_prefix}/#{base_path}"
+      def default_id_transformer
+        lambda do |id|
+          "#{connection.http.url_prefix}#{base_path}/#{id}"
+        end
       end
   end
 end
