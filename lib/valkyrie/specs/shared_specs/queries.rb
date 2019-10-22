@@ -7,7 +7,7 @@ RSpec.shared_examples 'a Valkyrie query provider' do
       attribute :alternate_ids, Valkyrie::Types::Set.of(Valkyrie::Types::ID)
       attribute :title
       attribute :member_ids, Valkyrie::Types::Array
-      attribute :a_member_of, Valkyrie::Types::Array
+      attribute :a_generic_member_of, Valkyrie::Types::Array
       attribute :an_ordered_member_of, Valkyrie::Types::Array.meta(ordered: true)
     end
     class Valkyrie::Specs::SecondResource < Valkyrie::Resource
@@ -231,30 +231,30 @@ RSpec.shared_examples 'a Valkyrie query provider' do
       it "returns all references given in a property" do
         parent = persister.save(resource: resource_class.new)
         parent2 = persister.save(resource: resource_class.new)
-        child = persister.save(resource: resource_class.new(a_member_of: [parent.id, parent2.id]))
+        child = persister.save(resource: resource_class.new(a_generic_member_of: [parent.id, parent2.id]))
         persister.save(resource: resource_class.new)
 
-        expect(query_service.find_references_by(resource: child, property: :a_member_of).map(&:id).to_a).to contain_exactly parent.id, parent2.id
+        expect(query_service.find_references_by(resource: child, property: :a_generic_member_of).map(&:id).to_a).to contain_exactly parent.id, parent2.id
       end
 
       it "returns an empty array if there are none" do
         child = persister.save(resource: resource_class.new)
-        expect(query_service.find_references_by(resource: child, property: :a_member_of).to_a).to eq []
+        expect(query_service.find_references_by(resource: child, property: :a_generic_member_of).to_a).to eq []
       end
 
       it "removes duplicates" do
         parent = persister.save(resource: resource_class.new)
-        child = persister.save(resource: resource_class.new(a_member_of: [parent.id, parent.id]))
+        child = persister.save(resource: resource_class.new(a_generic_member_of: [parent.id, parent.id]))
         persister.save(resource: resource_class.new)
 
-        expect(query_service.find_references_by(resource: child, property: :a_member_of).map(&:id).to_a).to contain_exactly parent.id
+        expect(query_service.find_references_by(resource: child, property: :a_generic_member_of).map(&:id).to_a).to contain_exactly parent.id
       end
 
       it "returns nothing if reference not found" do
-        child = persister.save(resource: resource_class.new(a_member_of: ["123123123"]))
+        child = persister.save(resource: resource_class.new(a_generic_member_of: ["123123123"]))
         persister.save(resource: resource_class.new)
 
-        expect(query_service.find_references_by(resource: child, property: :a_member_of).map(&:id).to_a).to eq []
+        expect(query_service.find_references_by(resource: child, property: :a_generic_member_of).map(&:id).to_a).to eq []
       end
     end
 
@@ -283,18 +283,18 @@ RSpec.shared_examples 'a Valkyrie query provider' do
         it "returns everything which references the given resource by the given property" do
           parent = persister.save(resource: resource_class.new)
           parent2 = persister.save(resource: resource_class.new)
-          child = persister.save(resource: resource_class.new(a_member_of: [parent.id]))
-          child2 = persister.save(resource: resource_class.new(a_member_of: [parent.id, parent2.id, parent.id]))
+          child = persister.save(resource: resource_class.new(a_generic_member_of: [parent.id]))
+          child2 = persister.save(resource: resource_class.new(a_generic_member_of: [parent.id, parent2.id, parent.id]))
           persister.save(resource: resource_class.new)
           persister.save(resource: Valkyrie::Specs::SecondResource.new)
 
-          expect(query_service.find_inverse_references_by(resource: parent, property: :a_member_of).map(&:id).to_a).to contain_exactly child.id, child2.id
+          expect(query_service.find_inverse_references_by(resource: parent, property: :a_generic_member_of).map(&:id).to_a).to contain_exactly child.id, child2.id
         end
 
         it "returns an empty array if there are none" do
           parent = persister.save(resource: resource_class.new)
 
-          expect(query_service.find_inverse_references_by(resource: parent, property: :a_member_of).to_a).to eq []
+          expect(query_service.find_inverse_references_by(resource: parent, property: :a_generic_member_of).to_a).to eq []
         end
       end
 
@@ -315,18 +315,18 @@ RSpec.shared_examples 'a Valkyrie query provider' do
       it "returns everything which references the given resource by the given property" do
         parent = persister.save(resource: resource_class.new)
         parent2 = persister.save(resource: resource_class.new)
-        child = persister.save(resource: resource_class.new(a_member_of: [parent.id]))
-        child2 = persister.save(resource: resource_class.new(a_member_of: [parent.id, parent2.id, parent.id]))
+        child = persister.save(resource: resource_class.new(a_generic_member_of: [parent.id]))
+        child2 = persister.save(resource: resource_class.new(a_generic_member_of: [parent.id, parent2.id, parent.id]))
         persister.save(resource: resource_class.new)
         persister.save(resource: Valkyrie::Specs::SecondResource.new)
 
-        expect(query_service.find_inverse_references_by(id: parent.id, property: :a_member_of).map(&:id).to_a).to contain_exactly child.id, child2.id
+        expect(query_service.find_inverse_references_by(id: parent.id, property: :a_generic_member_of).map(&:id).to_a).to contain_exactly child.id, child2.id
       end
     end
 
     context "when neither id nor resource is passed" do
       it "raises an error" do
-        expect { query_service.find_inverse_references_by(property: :a_member_of) }.to raise_error ArgumentError
+        expect { query_service.find_inverse_references_by(property: :a_generic_member_of) }.to raise_error ArgumentError
       end
     end
 
@@ -334,7 +334,7 @@ RSpec.shared_examples 'a Valkyrie query provider' do
       it "raises an error" do
         parent = resource_class.new
 
-        expect { query_service.find_inverse_references_by(resource: parent, property: :a_member_of).to_a }.to raise_error ArgumentError
+        expect { query_service.find_inverse_references_by(resource: parent, property: :a_generic_member_of).to_a }.to raise_error ArgumentError
       end
     end
   end
